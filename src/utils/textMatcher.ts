@@ -43,16 +43,21 @@ export const findMatches = (searchText: string, documentText: string): MatchResu
     results.push(...matches);
   });
   
-  // Remove duplicates based on searchText and context
+  // Remove duplicates based on position instead of context
   const uniqueResults = results.filter((result, index, array) => {
     return array.findIndex(r => 
       r.searchText === result.searchText && 
-      r.context === result.context &&
-      r.pageNumber === result.pageNumber
+      r.position === result.position
     ) === index;
   });
   
   console.log(`\n=== findMatches END - Total unique matches: ${uniqueResults.length} ===`);
+  console.log('Final results breakdown:', uniqueResults.map(r => ({ 
+    term: r.searchText, 
+    position: r.position, 
+    page: r.pageNumber 
+  })));
+  
   return uniqueResults;
 };
 
@@ -95,7 +100,8 @@ const findTermMatches = (searchTerm: string, text: string): MatchResult[] => {
       searchText: searchTerm,
       matchedText,
       context,
-      pageNumber
+      pageNumber,
+      position: matchIndex // Add position for better duplicate detection
     });
     
     startIndex = matchIndex + 1;

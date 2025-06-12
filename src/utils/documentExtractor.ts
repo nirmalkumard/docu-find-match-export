@@ -1,4 +1,3 @@
-
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -18,9 +17,37 @@ export const extractTextFromFile = async (file: File): Promise<string> => {
     fileType === 'application/msword'
   ) {
     return extractTextFromWord(file);
+  } else if (fileType === 'text/plain' || file.name.endsWith('.txt')) {
+    return extractTextFromPlainText(file);
   } else {
-    throw new Error('Unsupported file type. Please upload a PDF or Word document.');
+    throw new Error('Unsupported file type. Please upload a PDF, Word document, or text file.');
   }
+};
+
+const extractTextFromPlainText = async (file: File): Promise<string> => {
+  console.log('Extracting text from plain text file...');
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        console.log(`Plain text file length: ${text.length}`);
+        console.log('Plain text preview:', text.substring(0, 300));
+        
+        if (text.trim().length === 0) {
+          throw new Error('No readable text found in file');
+        }
+        
+        resolve(text);
+      } catch (error) {
+        console.error('Plain text extraction error:', error);
+        reject(new Error(`Failed to extract text from file: ${error.message}`));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read text file'));
+    reader.readAsText(file);
+  });
 };
 
 const extractTextFromPDF = async (file: File): Promise<string> => {

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import FileUploader from '../components/FileUploader';
 import TextInputs from '../components/TextInputs';
@@ -16,6 +17,7 @@ export interface MatchResult {
   matchedText: string;
   context: string;
   pageNumber: number;
+  position: number; // Add position field for better duplicate detection
 }
 
 const Index = () => {
