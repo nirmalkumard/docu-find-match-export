@@ -1,18 +1,8 @@
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure PDF.js worker with better fallback
-try {
-  // Try to use the worker from node_modules
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.js',
-    import.meta.url
-  ).toString();
-} catch (error) {
-  // Fallback to CDN if local worker fails
-  console.warn('Failed to load local PDF worker, falling back to CDN');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-}
+// Simplified PDF.js worker configuration - use CDN directly
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export const extractTextFromFile = async (file: File): Promise<string> => {
   console.log('=== EXTRACTING TEXT FROM FILE ===');
@@ -66,17 +56,28 @@ const extractTextFromPDF = async (file: File): Promise<string> => {
   try {
     const arrayBuffer = await file.arrayBuffer();
     
-    // Configure PDF loading with better error handling
-    const loadingTask = pdfjsLib.getDocument({
-      data: arrayBuffer,
-      useWorkerFetch: false,
-      isEvalSupported: false,
-      useSystemFonts: true,
-    });
+    // First try with worker, if it fails, try without worker
+    let pdf;
+    try {
+      console.log('Attempting PDF load with worker...');
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+      });
+      pdf = await loadingTask.promise;
+    } catch (workerError) {
+      console.warn('Worker failed, trying without worker:', workerError);
+      // Disable worker and try again
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer,
+        disableWorker: true,
+      });
+      pdf = await loadingTask.promise;
+    }
     
-    const pdf = await loadingTask.promise;
-    
-    console.log(`PDF loaded. Number of pages: ${pdf.numPages}`);
+    console.log(`PDF loaded successfully. Number of pages: ${pdf.numPages}`);
     
     let fullText = '';
     
@@ -103,15 +104,7 @@ const extractTextFromPDF = async (file: File): Promise<string> => {
     return fullText;
   } catch (error) {
     console.error('PDF extraction error:', error);
-    
-    // Provide more specific error messages
-    if (error.message?.includes('worker')) {
-      throw new Error('PDF worker failed to load. Please try refreshing the page or use a different file format.');
-    } else if (error.message?.includes('Invalid PDF')) {
-      throw new Error('Invalid PDF file. Please ensure the file is not corrupted.');
-    } else {
-      throw new Error(`Failed to extract text from PDF: ${error.message}`);
-    }
+    throw new Error(`Failed to extract text from PDF: ${error.message}. Please try a different PDF file or convert it to a Word document.`);
   }
 };
 

@@ -22,12 +22,9 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     include: ['pdfjs-dist'],
-  },
-  worker: {
-    format: 'es'
+    exclude: ['pdfjs-dist/build/pdf.worker.min.js']
   },
   define: {
-    // This helps with PDF.js worker issues
     global: 'globalThis',
   },
 }));
