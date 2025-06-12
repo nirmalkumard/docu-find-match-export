@@ -8,6 +8,12 @@ interface ResultsTableProps {
   results: MatchResult[];
 }
 
+interface SearchSummary {
+  searchTerm: string;
+  occurrences: number;
+  pages: number[];
+}
+
 const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
   if (results.length === 0) {
     return (
@@ -27,12 +33,31 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
     );
   }
 
+  // Group results by search term and calculate summary
+  const searchSummaries: SearchSummary[] = [];
+  const termGroups = results.reduce((acc, result) => {
+    if (!acc[result.searchText]) {
+      acc[result.searchText] = [];
+    }
+    acc[result.searchText].push(result);
+    return acc;
+  }, {} as Record<string, MatchResult[]>);
+
+  Object.entries(termGroups).forEach(([searchTerm, matches]) => {
+    const pages = [...new Set(matches.map(match => match.pageNumber))].sort((a, b) => a - b);
+    searchSummaries.push({
+      searchTerm,
+      occurrences: matches.length,
+      pages
+    });
+  });
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Search Results ({results.length} matches)</CardTitle>
+        <CardTitle>Search Results ({results.length} total matches)</CardTitle>
         <CardDescription>
-          Found matches across all input boxes
+          Found matches for your search terms
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -40,27 +65,23 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Input Box</TableHead>
                 <TableHead>Search Term</TableHead>
-                <TableHead>Matched Text</TableHead>
-                <TableHead>Context</TableHead>
-                <TableHead>Position</TableHead>
+                <TableHead>Occurrences</TableHead>
+                <TableHead>Pages Found</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {results.map((result, index) => (
+              {searchSummaries.map((summary, index) => (
                 <TableRow key={index}>
                   <TableCell className="font-medium">
-                    Box {result.inputBoxId}
+                    {summary.searchTerm}
                   </TableCell>
-                  <TableCell>{result.searchText}</TableCell>
                   <TableCell className="font-mono text-sm">
-                    {result.matchedText}
+                    {summary.occurrences}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {result.context}
+                  <TableCell>
+                    {summary.pages.join(', ')}
                   </TableCell>
-                  <TableCell>{result.pageNumber}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import FileUploader from '../components/FileUploader';
 import TextInputs from '../components/TextInputs';
@@ -21,7 +22,7 @@ export interface MatchResult {
 const Index = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState<string>('');
-  const [inputTexts, setInputTexts] = useState<string[]>(['', '', '']);
+  const [inputText, setInputText] = useState<string>('');
   const [results, setResults] = useState<MatchResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -29,7 +30,7 @@ const Index = () => {
   console.log('=== Index Component State ===', { 
     uploadedFile: uploadedFile?.name, 
     extractedTextLength: extractedText.length,
-    inputTexts,
+    inputText,
     resultsCount: results.length 
   });
 
@@ -61,11 +62,9 @@ const Index = () => {
     }
   };
 
-  const handleInputChange = (index: number, value: string) => {
-    console.log(`Input ${index + 1} changed to: "${value}"`);
-    const newInputs = [...inputTexts];
-    newInputs[index] = value;
-    setInputTexts(newInputs);
+  const handleInputChange = (value: string) => {
+    console.log(`Input changed to: "${value}"`);
+    setInputText(value);
   };
 
   const handleSearch = () => {
@@ -73,7 +72,7 @@ const Index = () => {
     console.log('Current state check:', {
       hasExtractedText: !!extractedText,
       extractedTextLength: extractedText.length,
-      inputTexts: inputTexts
+      inputText: inputText
     });
     
     if (!extractedText) {
@@ -86,28 +85,25 @@ const Index = () => {
       return;
     }
 
-    const searchTerms = inputTexts.filter(text => text.trim() !== '');
-    console.log('Valid search terms:', searchTerms);
-    
-    if (searchTerms.length === 0) {
-      console.log('No valid search terms provided');
+    if (inputText.trim() === '') {
+      console.log('No search text provided');
       toast({
         title: "No search terms",
-        description: "Please enter at least one search term.",
+        description: "Please enter search terms.",
         variant: "destructive",
       });
       return;
     }
 
-    console.log('Starting search with:', { inputTexts, extractedTextLength: extractedText.length });
-    const allMatches = findMatches(inputTexts, extractedText);
+    console.log('Starting search with:', { inputText, extractedTextLength: extractedText.length });
+    const allMatches = findMatches([inputText], extractedText);
     console.log('Search completed. Results:', allMatches);
     
     setResults(allMatches);
     
     toast({
       title: "Search completed",
-      description: `Found ${allMatches.length} matches across all inputs.`,
+      description: `Found ${allMatches.length} matches.`,
     });
     console.log('=== SEARCH COMPLETE ===');
   };
@@ -184,7 +180,7 @@ const Index = () => {
             )}
             
             <TextInputs 
-              inputTexts={inputTexts}
+              inputText={inputText}
               onInputChange={handleInputChange}
               onSearch={handleSearch}
               disabled={!extractedText}

@@ -6,14 +6,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
 interface TextInputsProps {
-  inputTexts: string[];
-  onInputChange: (index: number, value: string) => void;
+  inputText: string;
+  onInputChange: (value: string) => void;
   onSearch: () => void;
   disabled: boolean;
 }
 
 const TextInputs: React.FC<TextInputsProps> = ({ 
-  inputTexts, 
+  inputText, 
   onInputChange, 
   onSearch, 
   disabled 
@@ -27,21 +27,19 @@ const TextInputs: React.FC<TextInputsProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {inputTexts.map((text, index) => (
-          <div key={index}>
-            <Label htmlFor={`input-${index + 1}`}>
-              Input Box {index + 1}
-            </Label>
-            <Textarea
-              id={`input-${index + 1}`}
-              placeholder={`Enter search terms for input ${index + 1}...`}
-              value={text}
-              onChange={(e) => onInputChange(index, e.target.value)}
-              className="mt-1"
-              rows={3}
-            />
-          </div>
-        ))}
+        <div>
+          <Label htmlFor="search-input">
+            Search Text
+          </Label>
+          <Textarea
+            id="search-input"
+            placeholder="Enter search terms..."
+            value={inputText}
+            onChange={(e) => onInputChange(e.target.value)}
+            className="mt-1"
+            rows={3}
+          />
+        </div>
         <Button 
           onClick={onSearch} 
           disabled={disabled}
