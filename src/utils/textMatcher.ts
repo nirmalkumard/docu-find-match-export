@@ -30,6 +30,11 @@ export const findMatches = (inputTexts: string[], documentText: string): MatchRe
     const searchTerms = trimmedSearchText.split(/\s+/).filter(term => term.length > 0);
     console.log(`Search terms after split:`, searchTerms);
     
+    // Also search for the full phrase as one term
+    if (searchTerms.length > 1) {
+      searchTerms.push(trimmedSearchText);
+    }
+    
     searchTerms.forEach(term => {
       if (term.length < 1) {
         console.log(`Term "${term}" too short, skipping`);
@@ -43,8 +48,17 @@ export const findMatches = (inputTexts: string[], documentText: string): MatchRe
     });
   });
   
-  console.log(`\n=== findMatches END - Total matches: ${results.length} ===`);
-  return results;
+  // Remove duplicates based on inputBoxId, searchText, and matchIndex
+  const uniqueResults = results.filter((result, index, array) => {
+    return array.findIndex(r => 
+      r.inputBoxId === result.inputBoxId && 
+      r.searchText === result.searchText && 
+      r.context === result.context
+    ) === index;
+  });
+  
+  console.log(`\n=== findMatches END - Total matches: ${uniqueResults.length} ===`);
+  return uniqueResults;
 };
 
 const findTermMatches = (searchTerm: string, text: string, inputBoxId: number): MatchResult[] => {
@@ -54,7 +68,7 @@ const findTermMatches = (searchTerm: string, text: string, inputBoxId: number): 
   const lowerText = text.toLowerCase();
   const lowerTerm = searchTerm.toLowerCase();
   
-  console.log(`Searching for "${lowerTerm}" in text`);
+  console.log(`Searching for "${lowerTerm}" in text (case insensitive)`);
   
   let startIndex = 0;
   let matchCount = 0;
@@ -77,7 +91,8 @@ const findTermMatches = (searchTerm: string, text: string, inputBoxId: number): 
     console.log(`Match details:`, {
       matchedText,
       context: context.substring(0, 50) + '...',
-      pageNumber
+      pageNumber,
+      position: matchIndex
     });
     
     matches.push({
@@ -96,7 +111,7 @@ const findTermMatches = (searchTerm: string, text: string, inputBoxId: number): 
 };
 
 const extractContext = (text: string, matchIndex: number, matchLength: number): string => {
-  const contextRadius = 50;
+  const contextRadius = 100; // Increased context for better visibility
   const start = Math.max(0, matchIndex - contextRadius);
   const end = Math.min(text.length, matchIndex + matchLength + contextRadius);
   
@@ -106,11 +121,17 @@ const extractContext = (text: string, matchIndex: number, matchLength: number): 
   if (start > 0) context = '...' + context;
   if (end < text.length) context = context + '...';
   
-  return context.replace(/\s+/g, ' ').trim();
+  // Highlight the matched text in the context
+  const relativeMatchStart = matchIndex - start + (start > 0 ? 3 : 0); // Account for ellipsis
+  const beforeMatch = context.substring(0, relativeMatchStart);
+  const matchText = context.substring(relativeMatchStart, relativeMatchStart + matchLength);
+  const afterMatch = context.substring(relativeMatchStart + matchLength);
+  
+  return `${beforeMatch}**${matchText}**${afterMatch}`.replace(/\s+/g, ' ').trim();
 };
 
 const estimatePageNumber = (text: string, matchIndex: number): number => {
-  // Rough estimation: assume ~500 characters per page
-  const charactersPerPage = 500;
+  // More accurate estimation: assume ~2000 characters per page for documents
+  const charactersPerPage = 2000;
   return Math.floor(matchIndex / charactersPerPage) + 1;
 };
