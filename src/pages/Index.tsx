@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import FileUploader from '../components/FileUploader';
 import TextInputs from '../components/TextInputs';
@@ -53,7 +52,7 @@ const Index = () => {
       console.error('=== FILE EXTRACTION ERROR ===', error);
       toast({
         title: "Error processing file",
-        description: "Please try uploading a different file.",
+        description: error.message || "Please try uploading a different file.",
         variant: "destructive",
       });
     } finally {
@@ -96,7 +95,7 @@ const Index = () => {
     }
 
     console.log('Starting search with:', { inputText, extractedTextLength: extractedText.length });
-    const allMatches = findMatches([inputText], extractedText);
+    const allMatches = findMatches(inputText, extractedText);
     console.log('Search completed. Results:', allMatches);
     
     setResults(allMatches);

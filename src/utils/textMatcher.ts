@@ -1,9 +1,9 @@
 
 import { MatchResult } from '../pages/Index';
 
-export const findMatches = (inputTexts: string[], documentText: string): MatchResult[] => {
+export const findMatches = (searchText: string, documentText: string): MatchResult[] => {
   console.log('=== findMatches START ===');
-  console.log('inputTexts:', inputTexts);
+  console.log('searchText:', searchText);
   console.log('documentText length:', documentText.length);
   console.log('documentText preview:', documentText.substring(0, 200));
   
@@ -12,56 +12,51 @@ export const findMatches = (inputTexts: string[], documentText: string): MatchRe
     return [];
   }
   
+  if (!searchText || searchText.trim() === '') {
+    console.log('No search text provided');
+    return [];
+  }
+  
+  const trimmedSearchText = searchText.trim();
+  console.log(`Searching for: "${trimmedSearchText}"`);
+  
+  // Split by whitespace and filter out empty strings
+  const searchTerms = trimmedSearchText.split(/\s+/).filter(term => term.length > 0);
+  console.log(`Search terms after split:`, searchTerms);
+  
+  // Also search for the full phrase as one term if it contains multiple words
+  if (searchTerms.length > 1) {
+    searchTerms.push(trimmedSearchText);
+  }
+  
   const results: MatchResult[] = [];
   
-  inputTexts.forEach((searchText, index) => {
-    console.log(`\n--- Processing input ${index + 1} ---`);
-    console.log(`Input value: "${searchText}"`);
-    
-    if (!searchText || searchText.trim() === '') {
-      console.log(`Input ${index + 1} is empty, skipping`);
+  searchTerms.forEach(term => {
+    if (term.length < 1) {
+      console.log(`Term "${term}" too short, skipping`);
       return;
     }
     
-    const trimmedSearchText = searchText.trim();
-    console.log(`Trimmed search text: "${trimmedSearchText}"`);
-    
-    // Split by whitespace and filter out empty strings
-    const searchTerms = trimmedSearchText.split(/\s+/).filter(term => term.length > 0);
-    console.log(`Search terms after split:`, searchTerms);
-    
-    // Also search for the full phrase as one term
-    if (searchTerms.length > 1) {
-      searchTerms.push(trimmedSearchText);
-    }
-    
-    searchTerms.forEach(term => {
-      if (term.length < 1) {
-        console.log(`Term "${term}" too short, skipping`);
-        return;
-      }
-      
-      console.log(`Searching for term: "${term}"`);
-      const matches = findTermMatches(term, documentText, index + 1);
-      console.log(`Found ${matches.length} matches for term "${term}"`);
-      results.push(...matches);
-    });
+    console.log(`Searching for term: "${term}"`);
+    const matches = findTermMatches(term, documentText);
+    console.log(`Found ${matches.length} matches for term "${term}"`);
+    results.push(...matches);
   });
   
-  // Remove duplicates based on inputBoxId, searchText, and matchIndex
+  // Remove duplicates based on searchText and context
   const uniqueResults = results.filter((result, index, array) => {
     return array.findIndex(r => 
-      r.inputBoxId === result.inputBoxId && 
       r.searchText === result.searchText && 
-      r.context === result.context
+      r.context === result.context &&
+      r.pageNumber === result.pageNumber
     ) === index;
   });
   
-  console.log(`\n=== findMatches END - Total matches: ${uniqueResults.length} ===`);
+  console.log(`\n=== findMatches END - Total unique matches: ${uniqueResults.length} ===`);
   return uniqueResults;
 };
 
-const findTermMatches = (searchTerm: string, text: string, inputBoxId: number): MatchResult[] => {
+const findTermMatches = (searchTerm: string, text: string): MatchResult[] => {
   console.log(`\n>> findTermMatches for "${searchTerm}"`);
   
   const matches: MatchResult[] = [];
@@ -96,7 +91,7 @@ const findTermMatches = (searchTerm: string, text: string, inputBoxId: number): 
     });
     
     matches.push({
-      inputBoxId,
+      inputBoxId: 1, // Single input box
       searchText: searchTerm,
       matchedText,
       context,
@@ -111,7 +106,7 @@ const findTermMatches = (searchTerm: string, text: string, inputBoxId: number): 
 };
 
 const extractContext = (text: string, matchIndex: number, matchLength: number): string => {
-  const contextRadius = 100; // Increased context for better visibility
+  const contextRadius = 100;
   const start = Math.max(0, matchIndex - contextRadius);
   const end = Math.min(text.length, matchIndex + matchLength + contextRadius);
   
@@ -122,7 +117,7 @@ const extractContext = (text: string, matchIndex: number, matchLength: number): 
   if (end < text.length) context = context + '...';
   
   // Highlight the matched text in the context
-  const relativeMatchStart = matchIndex - start + (start > 0 ? 3 : 0); // Account for ellipsis
+  const relativeMatchStart = matchIndex - start + (start > 0 ? 3 : 0);
   const beforeMatch = context.substring(0, relativeMatchStart);
   const matchText = context.substring(relativeMatchStart, relativeMatchStart + matchLength);
   const afterMatch = context.substring(relativeMatchStart + matchLength);
@@ -131,7 +126,19 @@ const extractContext = (text: string, matchIndex: number, matchLength: number): 
 };
 
 const estimatePageNumber = (text: string, matchIndex: number): number => {
-  // More accurate estimation: assume ~2000 characters per page for documents
+  // Look for page markers first
+  const textBeforeMatch = text.substring(0, matchIndex);
+  const pageMarkers = textBeforeMatch.match(/--- Page (\d+) ---/g);
+  
+  if (pageMarkers && pageMarkers.length > 0) {
+    const lastPageMarker = pageMarkers[pageMarkers.length - 1];
+    const pageMatch = lastPageMarker.match(/--- Page (\d+) ---/);
+    if (pageMatch) {
+      return parseInt(pageMatch[1], 10);
+    }
+  }
+  
+  // Fallback to character-based estimation
   const charactersPerPage = 2000;
   return Math.floor(matchIndex / charactersPerPage) + 1;
 };

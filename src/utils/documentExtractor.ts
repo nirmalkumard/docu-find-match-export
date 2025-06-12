@@ -1,7 +1,14 @@
 
 import mammoth from 'mammoth';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export const extractTextFromFile = async (file: File): Promise<string> => {
+  console.log('=== EXTRACTING TEXT FROM FILE ===');
+  console.log('File details:', { name: file.name, type: file.type, size: file.size });
+  
   const fileType = file.type;
   
   if (fileType === 'application/pdf') {
@@ -12,38 +19,69 @@ export const extractTextFromFile = async (file: File): Promise<string> => {
   ) {
     return extractTextFromWord(file);
   } else {
-    throw new Error('Unsupported file type');
+    throw new Error('Unsupported file type. Please upload a PDF or Word document.');
   }
 };
 
 const extractTextFromPDF = async (file: File): Promise<string> => {
-  // For PDF extraction, we'll use a simple approach with FileReader
-  // In a production app, you'd want to use PDF.js or similar
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const arrayBuffer = event.target?.result as ArrayBuffer;
-      // Simple text extraction - in reality, you'd use PDF.js
-      const text = new TextDecoder().decode(arrayBuffer);
-      // Extract readable text (this is a simplified approach)
-      const readableText = text.replace(/[^\x20-\x7E\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
-      resolve(readableText || 'No readable text found in PDF');
-    };
-    reader.onerror = () => reject(new Error('Failed to read PDF file'));
-    reader.readAsArrayBuffer(file);
-  });
+  console.log('Extracting text from PDF using PDF.js...');
+  
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    console.log(`PDF loaded. Number of pages: ${pdf.numPages}`);
+    
+    let fullText = '';
+    
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      console.log(`Processing page ${pageNum}...`);
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      
+      fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
+      console.log(`Page ${pageNum} text length: ${pageText.length}`);
+    }
+    
+    console.log(`Total extracted text length: ${fullText.length}`);
+    console.log('PDF text extraction preview:', fullText.substring(0, 300));
+    
+    if (fullText.trim().length === 0) {
+      throw new Error('No readable text found in PDF');
+    }
+    
+    return fullText;
+  } catch (error) {
+    console.error('PDF extraction error:', error);
+    throw new Error(`Failed to extract text from PDF: ${error.message}`);
+  }
 };
 
 const extractTextFromWord = async (file: File): Promise<string> => {
+  console.log('Extracting text from Word document using mammoth.js...');
+  
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
         const arrayBuffer = event.target?.result as ArrayBuffer;
         const result = await mammoth.extractRawText({ arrayBuffer });
-        resolve(result.value || 'No text found in document');
+        
+        console.log(`Word document text length: ${result.value.length}`);
+        console.log('Word text extraction preview:', result.value.substring(0, 300));
+        
+        if (result.value.trim().length === 0) {
+          throw new Error('No readable text found in Word document');
+        }
+        
+        resolve(result.value);
       } catch (error) {
-        reject(new Error('Failed to extract text from Word document'));
+        console.error('Word extraction error:', error);
+        reject(new Error(`Failed to extract text from Word document: ${error.message}`));
       }
     };
     reader.onerror = () => reject(new Error('Failed to read Word file'));
