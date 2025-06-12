@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import FileUploader from '../components/FileUploader';
 import TextInputs from '../components/TextInputs';
@@ -27,7 +26,7 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  console.log('Current state:', { 
+  console.log('=== Index Component State ===', { 
     uploadedFile: uploadedFile?.name, 
     extractedTextLength: extractedText.length,
     inputTexts,
@@ -35,11 +34,13 @@ const Index = () => {
   });
 
   const handleFileUpload = async (file: File) => {
-    console.log('File upload started:', file.name, file.type);
+    console.log('=== FILE UPLOAD START ===');
+    console.log('File details:', { name: file.name, type: file.type, size: file.size });
     setIsProcessing(true);
     try {
       const text = await extractTextFromFile(file);
-      console.log('Extracted text:', text.substring(0, 200) + '...');
+      console.log('Text extraction successful. Length:', text.length);
+      console.log('Extracted text preview:', text.substring(0, 300));
       setUploadedFile(file);
       setExtractedText(text);
       setResults([]); // Clear previous results
@@ -48,7 +49,7 @@ const Index = () => {
         description: `Extracted ${text.length} characters from ${file.name}`,
       });
     } catch (error) {
-      console.error('File extraction error:', error);
+      console.error('=== FILE EXTRACTION ERROR ===', error);
       toast({
         title: "Error processing file",
         description: "Please try uploading a different file.",
@@ -56,20 +57,27 @@ const Index = () => {
       });
     } finally {
       setIsProcessing(false);
+      console.log('=== FILE UPLOAD END ===');
     }
   };
 
   const handleInputChange = (index: number, value: string) => {
+    console.log(`Input ${index + 1} changed to: "${value}"`);
     const newInputs = [...inputTexts];
     newInputs[index] = value;
     setInputTexts(newInputs);
-    console.log('Input changed:', index, value);
   };
 
   const handleSearch = () => {
-    console.log('Search initiated');
+    console.log('=== SEARCH BUTTON CLICKED ===');
+    console.log('Current state check:', {
+      hasExtractedText: !!extractedText,
+      extractedTextLength: extractedText.length,
+      inputTexts: inputTexts
+    });
     
     if (!extractedText) {
+      console.log('No extracted text available');
       toast({
         title: "No document uploaded",
         description: "Please upload a document first.",
@@ -79,9 +87,10 @@ const Index = () => {
     }
 
     const searchTerms = inputTexts.filter(text => text.trim() !== '');
-    console.log('Search terms:', searchTerms);
+    console.log('Valid search terms:', searchTerms);
     
     if (searchTerms.length === 0) {
+      console.log('No valid search terms provided');
       toast({
         title: "No search terms",
         description: "Please enter at least one search term.",
@@ -90,14 +99,17 @@ const Index = () => {
       return;
     }
 
+    console.log('Starting search with:', { inputTexts, extractedTextLength: extractedText.length });
     const allMatches = findMatches(inputTexts, extractedText);
-    console.log('Search results:', allMatches);
+    console.log('Search completed. Results:', allMatches);
+    
     setResults(allMatches);
     
     toast({
       title: "Search completed",
       description: `Found ${allMatches.length} matches across all inputs.`,
     });
+    console.log('=== SEARCH COMPLETE ===');
   };
 
   const handleDownloadCSV = () => {

@@ -2,54 +2,83 @@
 import { MatchResult } from '../pages/Index';
 
 export const findMatches = (inputTexts: string[], documentText: string): MatchResult[] => {
-  console.log('findMatches called with:', { inputTexts, documentTextLength: documentText.length });
+  console.log('=== findMatches START ===');
+  console.log('inputTexts:', inputTexts);
+  console.log('documentText length:', documentText.length);
+  console.log('documentText preview:', documentText.substring(0, 200));
+  
+  if (!documentText || documentText.trim() === '') {
+    console.log('No document text available');
+    return [];
+  }
   
   const results: MatchResult[] = [];
   
   inputTexts.forEach((searchText, index) => {
-    if (searchText.trim() === '') {
+    console.log(`\n--- Processing input ${index + 1} ---`);
+    console.log(`Input value: "${searchText}"`);
+    
+    if (!searchText || searchText.trim() === '') {
       console.log(`Input ${index + 1} is empty, skipping`);
       return;
     }
     
-    console.log(`Processing input ${index + 1}: "${searchText}"`);
-    const searchTerms = searchText.trim().split(/\s+/);
-    console.log(`Split into terms:`, searchTerms);
+    const trimmedSearchText = searchText.trim();
+    console.log(`Trimmed search text: "${trimmedSearchText}"`);
+    
+    // Split by whitespace and filter out empty strings
+    const searchTerms = trimmedSearchText.split(/\s+/).filter(term => term.length > 0);
+    console.log(`Search terms after split:`, searchTerms);
     
     searchTerms.forEach(term => {
-      if (term.length < 2) {
+      if (term.length < 1) {
         console.log(`Term "${term}" too short, skipping`);
         return;
       }
       
+      console.log(`Searching for term: "${term}"`);
       const matches = findTermMatches(term, documentText, index + 1);
       console.log(`Found ${matches.length} matches for term "${term}"`);
       results.push(...matches);
     });
   });
   
-  console.log(`Total matches found: ${results.length}`);
+  console.log(`\n=== findMatches END - Total matches: ${results.length} ===`);
   return results;
 };
 
 const findTermMatches = (searchTerm: string, text: string, inputBoxId: number): MatchResult[] => {
+  console.log(`\n>> findTermMatches for "${searchTerm}"`);
+  
   const matches: MatchResult[] = [];
   const lowerText = text.toLowerCase();
   const lowerTerm = searchTerm.toLowerCase();
   
-  console.log(`Searching for "${lowerTerm}" in text of length ${text.length}`);
+  console.log(`Searching for "${lowerTerm}" in text`);
   
   let startIndex = 0;
+  let matchCount = 0;
   
-  while (true) {
+  while (startIndex < text.length) {
     const matchIndex = lowerText.indexOf(lowerTerm, startIndex);
-    if (matchIndex === -1) break;
     
-    console.log(`Match found at index ${matchIndex}`);
+    if (matchIndex === -1) {
+      console.log(`No more matches found after index ${startIndex}`);
+      break;
+    }
+    
+    matchCount++;
+    console.log(`Match ${matchCount} found at index ${matchIndex}`);
     
     const matchedText = text.substring(matchIndex, matchIndex + searchTerm.length);
     const context = extractContext(text, matchIndex, searchTerm.length);
     const pageNumber = estimatePageNumber(text, matchIndex);
+    
+    console.log(`Match details:`, {
+      matchedText,
+      context: context.substring(0, 50) + '...',
+      pageNumber
+    });
     
     matches.push({
       inputBoxId,
@@ -62,6 +91,7 @@ const findTermMatches = (searchTerm: string, text: string, inputBoxId: number): 
     startIndex = matchIndex + 1;
   }
   
+  console.log(`<< findTermMatches complete: ${matches.length} matches found`);
   return matches;
 };
 
