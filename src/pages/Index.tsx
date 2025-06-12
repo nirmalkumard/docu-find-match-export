@@ -7,7 +7,8 @@ import { extractTextFromFile } from '../utils/documentExtractor';
 import { findMatches } from '../utils/textMatcher';
 import { exportToCSV } from '../utils/csvExporter';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Download, FileText, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export interface MatchResult {
@@ -26,23 +27,33 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
+  console.log('Current state:', { 
+    uploadedFile: uploadedFile?.name, 
+    extractedTextLength: extractedText.length,
+    inputTexts,
+    resultsCount: results.length 
+  });
+
   const handleFileUpload = async (file: File) => {
+    console.log('File upload started:', file.name, file.type);
     setIsProcessing(true);
     try {
       const text = await extractTextFromFile(file);
+      console.log('Extracted text:', text.substring(0, 200) + '...');
       setUploadedFile(file);
       setExtractedText(text);
+      setResults([]); // Clear previous results
       toast({
         title: "File uploaded successfully",
         description: `Extracted ${text.length} characters from ${file.name}`,
       });
     } catch (error) {
+      console.error('File extraction error:', error);
       toast({
         title: "Error processing file",
         description: "Please try uploading a different file.",
         variant: "destructive",
       });
-      console.error('File extraction error:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -52,9 +63,12 @@ const Index = () => {
     const newInputs = [...inputTexts];
     newInputs[index] = value;
     setInputTexts(newInputs);
+    console.log('Input changed:', index, value);
   };
 
   const handleSearch = () => {
+    console.log('Search initiated');
+    
     if (!extractedText) {
       toast({
         title: "No document uploaded",
@@ -65,6 +79,8 @@ const Index = () => {
     }
 
     const searchTerms = inputTexts.filter(text => text.trim() !== '');
+    console.log('Search terms:', searchTerms);
+    
     if (searchTerms.length === 0) {
       toast({
         title: "No search terms",
@@ -75,6 +91,7 @@ const Index = () => {
     }
 
     const allMatches = findMatches(inputTexts, extractedText);
+    console.log('Search results:', allMatches);
     setResults(allMatches);
     
     toast({
@@ -118,6 +135,41 @@ const Index = () => {
               onFileUpload={handleFileUpload} 
               isProcessing={isProcessing}
             />
+
+            {/* File Status Card */}
+            {uploadedFile && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="text-green-500" size={20} />
+                    File Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FileText size={16} className="text-muted-foreground" />
+                      <span className="font-medium">{uploadedFile.name}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Size: {(uploadedFile.size / 1024).toFixed(1)} KB
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Text extracted: {extractedText.length} characters
+                    </div>
+                    {extractedText && (
+                      <div className="mt-4 p-3 bg-muted rounded-md">
+                        <p className="text-sm font-medium mb-2">Text Preview:</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {extractedText.substring(0, 200)}
+                          {extractedText.length > 200 && '...'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             
             <TextInputs 
               inputTexts={inputTexts}
