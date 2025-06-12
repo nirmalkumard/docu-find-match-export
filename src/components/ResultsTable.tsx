@@ -15,6 +15,8 @@ interface SearchSummary {
 }
 
 const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
+  console.log('ResultsTable received results:', results);
+  
   if (results.length === 0) {
     return (
       <Card>
@@ -43,14 +45,22 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
     return acc;
   }, {} as Record<string, MatchResult[]>);
 
+  console.log('Term groups:', termGroups);
+
   Object.entries(termGroups).forEach(([searchTerm, matches]) => {
     const pages = [...new Set(matches.map(match => match.pageNumber))].sort((a, b) => a - b);
+    const totalOccurrences = matches.length; // This counts ALL matches, not just unique pages
+    
+    console.log(`Processing term "${searchTerm}": ${totalOccurrences} occurrences on pages`, pages);
+    
     searchSummaries.push({
       searchTerm,
-      occurrences: matches.length,
+      occurrences: totalOccurrences,
       pages
     });
   });
+
+  console.log('Final search summaries:', searchSummaries);
 
   return (
     <Card>
